@@ -38,7 +38,39 @@ import { RNS3 } from 'react-native-aws3';
   }
 
   share = () => {
-    Share.open(shareOptions)
+    const image = {
+      // `uri` can also be a file system path (i.e. file://)
+        uri: this.state.image.uri,
+        name: "image.png",
+        type: "image/png"
+      }
+
+      const options = {
+        keyPrefix: "uploads/",
+        bucket: "picspiration",
+        region: "us-east-2",
+        accessKey: "AKIAIM5GMSSFDVEWPCVQ",
+        secretKey: "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",
+        successActionStatus: 201
+      }
+
+      if (image !== null) {
+        RNS3.put(image, options)
+        .then(res => {
+          if (res.status !== 201)
+          throw new Error("Failed to upload image to S3");
+          console.log(res.body);
+          //this.share(res.body.location)
+          let shareOptions = {
+            title: "React Native Share Example",
+            message: "Check out this photo!",
+            url: res.body.location,
+            subject: "Check out this photo!"
+          }
+        })
+      }
+      
+      Share.open(shareOptions)
       .then((res) => console.log('res:', res))
       .catch(err => console.log('err', err))
       
@@ -68,9 +100,15 @@ import { RNS3 } from 'react-native-aws3';
                   onPress={this._pickImage}
                 />
                 {image &&
-                  <Image source={{ uri: image }} style={{ width: 200, height: 200 }} />}
+                    <View style={styles.shareButton}>
+                      <Image source={{ uri: image }} style={{ width: 200, height: 200 }} />
+                      <Button
+                          title='Share'
+                          onPress={this.share}
+                        />
+                      </View>
+                  }
 
-                
               </View>
             </View>
           </View>
@@ -88,33 +126,9 @@ import { RNS3 } from 'react-native-aws3';
     console.log(result);
 
     if (!result.cancelled) {
-      this.setState({ image: result.uri });
-      const image = {
-      // `uri` can also be a file system path (i.e. file://)
-        uri: result.uri,
-        name: "image.png",
-        type: "image/png"
-      }
-
-      const options = {
-        keyPrefix: "uploads/",
-        bucket: "picspiration",
-        region: "us-east-2",
-        accessKey: "AKIAIM5GMSSFDVEWPCVQ",
-        secretKey: "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",
-        successActionStatus: 201
-      }
-
-      if (image !== null) {
-        RNS3.put(image, options)
-        .then(res => {
-          if (res.status !== 201)
-          throw new Error("Failed to upload image to S3");
-          console.log(res.body);
-          this.share(res.body.location)
-          })
-        }
-      }
+      this.setState({ image: result });
+    }
+      
   };
 }
 
