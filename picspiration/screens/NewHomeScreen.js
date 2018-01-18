@@ -7,21 +7,45 @@ import {
   Text,
   TouchableOpacity,
   View,
-  TextInput
+  TextInput,
+  Button,
+  Dimensions
 } from 'react-native';
 import { WebBrowser, ImagePicker } from 'expo';
+import Share from 'react-native-share'
+import { RNS3 } from 'react-native-aws3';
 
-export default class NewHomeScreen extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      text: '',
-      image: null,
+  const { width } = Dimensions.get('window')
+  
+  export default class NewHomeScreen extends Component {
+    constructor(props) {
+      super(props);
+      this.state = {
+        modalVisible: false,
+        text: '',
+        image: null,
+      index: null
     }
   }
 
+  toggleModal = () => {
+    this.setState({ modalVisible: !this.state.modalVisible });
+  }
+
+  navigate = () => {
+    const { navigate } = this.props.navigation
+    navigate('ImageBrowser')
+  }
+
+  share = () => {
+    Share.open(shareOptions)
+      .then((res) => console.log('res:', res))
+      .catch(err => console.log('err', err))
+      
+  }
+
   render() {
-    let { image } = this.state.image;
+    let { image } = this.state;
 
     return (
       <View style={styles.container}>
@@ -45,6 +69,8 @@ export default class NewHomeScreen extends Component {
                 />
                 {image &&
                   <Image source={{ uri: image }} style={{ width: 200, height: 200 }} />}
+
+                
               </View>
             </View>
           </View>
@@ -56,14 +82,39 @@ export default class NewHomeScreen extends Component {
   _pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       allowsEditing: true,
-      aspect: [4, 3],
+      aspect: [4, 3]
     });
 
     console.log(result);
 
     if (!result.cancelled) {
       this.setState({ image: result.uri });
-    }
+      const image = {
+      // `uri` can also be a file system path (i.e. file://)
+        uri: result.uri,
+        name: "image.png",
+        type: "image/png"
+      }
+
+      const options = {
+        keyPrefix: "uploads/",
+        bucket: "picspiration",
+        region: "us-east-2",
+        accessKey: "AKIAIM5GMSSFDVEWPCVQ",
+        secretKey: "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",
+        successActionStatus: 201
+      }
+
+      if (image !== null) {
+        RNS3.put(image, options)
+        .then(res => {
+          if (res.status !== 201)
+          throw new Error("Failed to upload image to S3");
+          console.log(res.body);
+          this.share(res.body.location)
+          })
+        }
+      }
   };
 }
 
@@ -154,5 +205,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#2e78b7',
   },
+  modalContainer: {
+    paddingTop: 20,
+    flex: 1
+  },
+  scrollView: {
+    flexWrap: 'wrap',
+    flexDirection: 'row'
+  },
+  shareButton: {
+    position: 'absolute',
+    width,
+    padding: 10,
+    bottom: 0,
+    left: 0
+  }
 });
 
