@@ -40,7 +40,7 @@ import { RNS3 } from 'react-native-aws3';
   share = () => {
     const image = {
       // `uri` can also be a file system path (i.e. file://)
-        uri: this.state.image.uri,
+        uri: this.state.image,
         name: "image.png",
         type: "image/png"
       }
@@ -126,7 +126,7 @@ import { RNS3 } from 'react-native-aws3';
     console.log(result);
 
     if (!result.cancelled) {
-      this.setState({ image: result });
+      this.setState({ image: result.uri });
     }
       
   };
