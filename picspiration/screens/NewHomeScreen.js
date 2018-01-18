@@ -40,7 +40,7 @@ export default class NewHomeScreen extends Component {
 
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                 <Button
-                  title="Pick an image from camera roll NOW"
+                  title="Pick an image from camera roll"
                   onPress={this._pickImage}
                 />
                 {image &&
