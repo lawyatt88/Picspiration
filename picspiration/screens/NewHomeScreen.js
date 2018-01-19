@@ -14,6 +14,13 @@ import {
 import { WebBrowser, ImagePicker } from 'expo';
 import Share from 'react-native-share'
 import { RNS3 } from 'react-native-aws3';
+const Clarifai = require('clarifai');
+
+const app = new Clarifai.App({
+  apiKey: 'f2080085df114d3b98fd4593ed22d073'
+ });
+
+process.nextTick = setImmediate;
 
   const { width } = Dimensions.get('window')
   
@@ -23,7 +30,7 @@ import { RNS3 } from 'react-native-aws3';
       this.state = {
         modalVisible: false,
         text: '',
-        image: null,
+        image: {},
       index: null
     }
   }
@@ -38,11 +45,13 @@ import { RNS3 } from 'react-native-aws3';
   }
 
   share = () => {
-    const image = {
+    const {uri} = this.state.image
+    const name = uri.slice(uri.lastIndexOf('/'))
+    const image = { 
       // `uri` can also be a file system path (i.e. file://)
-        uri: this.state.image,
-        name: "image.png",
-        type: "image/png"
+        uri: this.state.image.uri,
+        name: name,
+        type: "image/jpg"
       }
 
       const options = {
@@ -60,24 +69,35 @@ import { RNS3 } from 'react-native-aws3';
           if (res.status !== 201)
           throw new Error("Failed to upload image to S3");
           console.log(res.body);
-          //this.share(res.body.location)
+          return res
+        })
+        .then(res => {
+          console.log('i am postResponse', res.body.postResponse)
+          this.setState({ 
+            image: { 
+              uri: this.state.image.uri,
+              url: res.body.postResponse.location
+            } 
+          });
+        })
+        
+        .then(() => {
           let shareOptions = {
             title: "React Native Share Example",
             message: "Check out this photo!",
-            url: res.body.location,
+            url: this.state.image.url,
             subject: "Check out this photo!"
           }
+          console.log(this.state)
+          Share.open(shareOptions)
+            .then((res) => console.log('res:', res))
+            .catch(err => console.log('err', err))
         })
       }
-      
-      Share.open(shareOptions)
-      .then((res) => console.log('res:', res))
-      .catch(err => console.log('err', err))
-      
   }
 
   render() {
-    let { image } = this.state;
+    let image = this.state.image.uri;
 
     return (
       <View style={styles.container}>
@@ -106,7 +126,7 @@ import { RNS3 } from 'react-native-aws3';
                           title='Share'
                           onPress={this.share}
                         />
-                      </View>
+                    </View>
                   }
 
               </View>
@@ -120,16 +140,44 @@ import { RNS3 } from 'react-native-aws3';
   _pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       allowsEditing: true,
-      aspect: [4, 3]
+      aspect: [4, 3],
+      base64: true
     });
 
     console.log(result);
 
+    app.models.predict(Clarifai.GENERAL_MODEL, {base64: result.base64}).then(
+      function(res) {
+        console.log(res)
+      },
+      function(err) {
+        console.log(err)
+      }
+    );
+
+
+
     if (!result.cancelled) {
-      this.setState({ image: result.uri });
+      this.setState({ 
+        image: { 
+          uri: result.uri,
+          url: ''
+        } 
+      });
     }
       
   };
+  
+  _getWords = () => {
+    app.models.predict(Clarifai.GENERAL_MODEL, {base64: "G7p3m95uAl..."}).then(
+      function(response) {
+        // do something with response
+      },
+      function(err) {
+        // there was an error
+      }
+    );
+  }
 }
 
 const styles = StyleSheet.create({
