@@ -1,22 +1,26 @@
 import React from 'react';
 import { Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { TabNavigator, TabBarBottom } from 'react-navigation';
+import { TabNavigator, TabBarBottom, StackNavigator } from 'react-navigation';
 
 import Colors from '../constants/Colors';
 
 import HomeScreen from '../screens/HomeScreen';
 import LinksScreen from '../screens/LinksScreen';
 import SettingsScreen from '../screens/SettingsScreen';
-import NewHomeScreen from '../screens/NewHomeScreen';
+import NewHomeScreen, { SelectTags }from '../screens/NewHomeScreen';
+import PicPicker from '../screens/PicPicker'
 
-export default TabNavigator(
+const oldNavigation = TabNavigator (
   {
     Home: {
       screen: HomeScreen,
     },
     NewHome: {
       screen: NewHomeScreen,
+    },
+    PicPicker: {
+      screen: PicPicker,
     },
     Links: {
       screen: LinksScreen,
@@ -38,6 +42,12 @@ export default TabNavigator(
                 : 'md-information-circle';
             break;
           case 'NewHome':
+            iconName =
+              Platform.OS === 'ios'
+                ? `ios-images${focused ? '' : '-outline'}`
+                : 'md-images';
+            break;
+          case 'PicPicker':
             iconName =
               Platform.OS === 'ios'
                 ? `ios-images${focused ? '' : '-outline'}`
