@@ -8,12 +8,18 @@ import {
   TouchableOpacity,
   View,
   TextInput,
-  Button,
-  Dimensions
+  Dimensions,
+  Linking,
+  Picker,
+  NavigatorIOS,
+  CheckBox
 } from 'react-native';
+import { Button } from 'react-native-elements'
 import { WebBrowser, ImagePicker } from 'expo';
 import Share from 'react-native-share'
 import { RNS3 } from 'react-native-aws3';
+import axios from 'axios'
+
 const Clarifai = require('clarifai');
 
 const app = new Clarifai.App({
@@ -22,18 +28,112 @@ const app = new Clarifai.App({
 
 process.nextTick = setImmediate;
 
-  const { width } = Dimensions.get('window')
-  
-  export default class NewHomeScreen extends Component {
-    constructor(props) {
-      super(props);
-      this.state = {
-        modalVisible: false,
-        text: '',
-        image: {},
-      index: null
+const { width } = Dimensions.get('window')
+
+export default class NewHomeScreen extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      modalVisible: false,
+      text: '',
+      image: {},
+      selectedModels: [],
+      index: null,
+      tags: {}
     }
   }
+
+  render() {
+    console.log('!!!!!!!!', this.state)
+    let image = this.state.image.uri;
+    const models = [
+      {id: Clarifai.GENERAL_MODEL,
+      name: 'General'},
+      {id: Clarifai.FOOD_MODEL,
+      name: 'Food'},
+      {id: Clarifai.NSFW_MODEL,
+      name: 'NSFW'},
+      {id: Clarifai.TRAVEL_MODEL,
+      name: 'Travel'},
+      {id: Clarifai.WEDDING_MODEL,
+      name: 'Wedding'},
+      {id: Clarifai.COLOR_MODEL,
+      name: 'Color'}
+    ]
+
+    const { selectedModels } = this.state;
+      
+    return (
+      <View style={styles.container}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+          <View style={styles.welcomeContainer}>
+            <View style={{ padding: 10 }}>
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <Button
+                  title="Pick an image from camera roll"
+                  onPress={ this._pickImage }
+                />
+                {image &&
+                    <View style={{ margin: 5 }}>
+                      <Image source={{ uri: image }} style={{ width: 300, height: 300 }} />
+                      <Picker onValueChange = {this.onSelectedModelsChange}>
+                        <Picker.Item label='Find Tags By Category' value='0' key='0' />
+                        {models.map(model => {
+                          return <Picker.Item label = {model.name} value = {model.id} key = {model.id} />
+                        })}
+                      </Picker>
+                      <View>
+                        <Text style={{ padding: 10, fontSize: 42 }}>
+                          {"Categories"}
+                        </Text>
+                        {this.state.selectedModels.map(selectedModel => {
+                          let thisModel = models.find(model => {
+                            return model.id === selectedModel
+                          })
+                          
+                          return <Button
+                            raised
+                            icon={{name: 'close'}}
+                            key = {thisModel.id}
+                            title={thisModel.name}
+                            onPress={(evt) => this.removeModel(evt, thisModel.id)}
+                          />
+                        })}
+                      </View>
+                      <Button
+                        title='Share'
+                        onPress={this.share}
+                      />
+                    </View>
+                  }
+
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    )
+  }
+
+  
+
+  _pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      base64: true
+    });
+
+    if (!result.cancelled) {
+      this.setState({ 
+        image: { 
+          uri: result.uri,
+          base64: result.base64,
+          url: ''
+        } 
+      });
+    } 
+  };
 
   toggleModal = () => {
     this.setState({ modalVisible: !this.state.modalVisible });
@@ -80,7 +180,6 @@ process.nextTick = setImmediate;
             } 
           });
         })
-        
         .then(() => {
           let shareOptions = {
             title: "React Native Share Example",
@@ -89,6 +188,7 @@ process.nextTick = setImmediate;
             subject: "Check out this photo!"
           }
           console.log(this.state)
+
           Share.open(shareOptions)
             .then((res) => console.log('res:', res))
             .catch(err => console.log('err', err))
@@ -96,77 +196,69 @@ process.nextTick = setImmediate;
       }
   }
 
-  render() {
-    let image = this.state.image.uri;
+  onSelectedModelsChange = selectedModel => {
+    if(this.state.selectedModels.indexOf(selectedModel) === -1 && selectedModel !== '0') {
+      this._getData(selectedModel)
+      let updatedSelection = [...this.state.selectedModels, selectedModel]
+      this.setState({ selectedModels: updatedSelection });
+    }
+  };
 
-    return (
-      <View style={styles.container}>
-        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-          <View style={styles.welcomeContainer}>
-
-            <View style={{ padding: 10 }}>
-              <TextInput
-                style={{ height: 40 }}
-                placeholder="Enter a word to search for images"
-                onChangeText={(text) => this.setState({ text })}
-              />
-              <Text style={{ padding: 10, fontSize: 42 }}>
-                {this.state.text.split(' ').map((word) => word && '🍕').join(' ')}
-              </Text>
-
-              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                <Button
-                  title="Pick an image from camera roll"
-                  onPress={this._pickImage}
-                />
-                {image &&
-                    <View style={styles.shareButton}>
-                      <Image source={{ uri: image }} style={{ width: 200, height: 200 }} />
-                      <Button
-                          title='Share'
-                          onPress={this.share}
-                        />
-                    </View>
-                  }
-
-              </View>
-            </View>
-          </View>
-        </ScrollView>
-      </View>
-    );
-  }
-
-  _pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      aspect: [4, 3],
-      base64: true
-    });
-
-    console.log(result);
-
-    app.models.predict(Clarifai.GENERAL_MODEL, {base64: result.base64}).then(
-      function(res) {
-        console.log(res)
+  removeModel = (evt, selectedModel) => {
+    this._removeData(selectedModel)
+    let updatedSelection = this.state.selectedModels.filter(model => {
+      return model !== selectedModel
+    })
+    this.setState({ selectedModels: updatedSelection });
+  };
+    
+  _getData = (selectedModel) => {
+    let { image } = this.state
+    app.models.predict(selectedModel, {base64: image.base64})
+    .then( res => {
+      //add conditional for colors
+      console.log('Clarifai response = ', res.rawData)
+      let newTags = {};
+      newTags[selectedModel] = []
+      for (let i = 0; i<res.rawData.outputs[0].data.concepts.length; i++) {
+        newTags[selectedModel].push(res.rawData.outputs[0].data.concepts[i].name);
+      }
+      console.log('these are the NEW tags', newTags)
+      let tags = {...this.state.tags, ...newTags}
+      this.setState({ tags });
+      return newTags[selectedModel]
       },
       function(err) {
         console.log(err)
       }
-    );
+    )
+    .then(tags => {
+      this._getSynonyms(tags[0])
+    })
+  }
 
+  _removeData = (selectedModel) => {
+    delete this.state.tags[selectedModel]
+  }
 
-
-    if (!result.cancelled) {
-      this.setState({ 
-        image: { 
-          uri: result.uri,
-          url: ''
-        } 
-      });
+  _addData = () => {app.inputs.create({
+    base64: result.base64,
+    concepts: [
+      {
+        id: "shrimp",
+        value: true,
+        metadata: {id: 'id001', type: 'food'}
+      }
+    ]
+  })
+  .then(
+    function(res) {
+      console.log('input response', res)
+    },
+    function(err) {
+      console.log(err)
     }
-      
-  };
+  )}
   
   _getWords = () => {
     app.models.predict(Clarifai.GENERAL_MODEL, {base64: "G7p3m95uAl..."}).then(
@@ -177,6 +269,21 @@ process.nextTick = setImmediate;
         // there was an error
       }
     );
+  }
+
+  _getSynonyms = (selectedTag) => {
+    console.log('the TAG!!!!!', selectedTag)
+    let config = {
+      headers: {
+        "X-Mashape-Key": "S7A4PTHfUgmshp7UdWLBIhoHjTYSp1uyGtZjsnVy9YSmOsVUmS",
+        "X-Mashape-Host": "wordsapiv1.p.mashape.com"
+      }
+    };
+
+    return axios.get(`https://wordsapiv1.p.mashape.com/words/${selectedTag}/synonyms`, config)
+    .then((result) => {
+      console.log('i am the SYNONYMS!!!!!', result.data.synonyms);
+    });
   }
 }
 
@@ -194,6 +301,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingTop: 30,
+    alignItems: 'center',
   },
   welcomeContainer: {
     alignItems: 'center',
