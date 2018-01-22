@@ -2,13 +2,18 @@ import { Notifications } from 'expo';
 import React from 'react';
 import { StackNavigator } from 'react-navigation';
 
+import NewHomeScreen, { SelectTags }from '../screens/NewHomeScreen';
+
 import MainTabNavigator from './MainTabNavigator';
 import registerForPushNotificationsAsync from '../api/registerForPushNotificationsAsync';
 
 const RootStackNavigator = StackNavigator(
   {
     Main: {
-      screen: MainTabNavigator,
+      screen: NewHomeScreen,
+    },
+    SelectTags: {
+      screen: SelectTags,
     },
   },
   {
