@@ -1,0 +1,4 @@
+node_modules/**/*
+.expo/**/*
+secrets.js
+package-lock.json
