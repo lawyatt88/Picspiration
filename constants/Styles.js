@@ -8,7 +8,9 @@ export const { width } = Dimensions.get('window')
     },
     blueContainer: {
       flex: 1,
-      backgroundColor: "rgba(223, 234, 241, 1)"
+      backgroundColor: "rgba(223, 234, 241, 1)",
+      alignItems: 'center',
+      justifyContent: 'center'
     },
     developmentModeText: {
       marginBottom: 20,

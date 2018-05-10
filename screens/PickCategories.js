@@ -29,7 +29,11 @@ const app = new Clarifai.App({
 
 process.nextTick = setImmediate;
 
-export default class NewHomeScreen extends Component {
+export default class PickCategories extends Component {
+  static navigationOptions = {
+    title: 'Categorize It!',
+  }
+
   constructor(props) {
     super(props);
     this.state = {
@@ -58,8 +62,6 @@ export default class NewHomeScreen extends Component {
   }
 
   updateIndex (selectedIndex) {
-    //if it's open, close it
-    console.log('selectedIndex:', selectedIndex)
     if (selectedIndex === this.state.selectedIndex) {
       this.setState({buttonGroupDisplay: {}, selectedIndex: null})
     } else {
@@ -87,28 +89,8 @@ export default class NewHomeScreen extends Component {
   }
 
   render() {
-    const { selectedModels, selectedIndex, models } = this.state;
-    let image = this.state.image.uri;
-    const buttons = [
-      {element: () => {
-        return (
-            <View style={{flexGrow: 10, alignItems: 'center', justifyContent: 'center'}} >
-                <Text>Pick Categories</Text>
-            </View>
-        )}},
-      {element: () =>
-        <View 
-          style={{width: 50, alignItems: 'center', justifyContent: 'center'}}
-          buttonComponentStyle={{flex:1}}
-        >
-         <Icon
-        name='md-add'
-        color='white'
-        size={25}
-      />
-    </View>}
-    ]
-
+    const { selectedModels, selectedIndex, models } = this.state
+    let image = this.state.image.uri
     console.log('state:', this.state)
 
     return (
@@ -133,13 +115,6 @@ export default class NewHomeScreen extends Component {
                       backgroundColor="rgba(154, 72, 155, 1)"
                     />
                   </View>
-                  {/*<ButtonGroup
-                    onPress={this.updateIndex}
-                    selectedIndex={selectedIndex}
-                    buttons={buttons}
-                    containerStyle={{height: 50, alignContent: 'center'}}
-                    buttonStyle={{backgroundColor: "rgba(154, 72, 155, 1)"}}
-                  />*/}
                   {selectedIndex === 0 && models.length &&
                     <View style={{ flex: 1, flexDirection:'row', flexWrap:'wrap', alignItems: 'center', justifyContent: 'center' }}>
                     {models.map(model => {
@@ -150,7 +125,7 @@ export default class NewHomeScreen extends Component {
                           onChange={(checked) => {
                             let newCheckedState = {...this.state.checked}
                             newCheckedState[model.id] = !this.state.checked[model.id]
-                            if (newCheckedState[model.id]) this.findTags(model.id)
+                            if (newCheckedState[model.id]) this.setState({selectedModels: [...this.state.selectedModels, model.id]})
                             else this.removeModelTags(model.id)
                             this.setState({checked: newCheckedState})
                           }}
@@ -181,19 +156,6 @@ export default class NewHomeScreen extends Component {
                       />
                     </View>
                   }
-                  <View>
-                    {this.state.selectedModels.map(selectedModel => {
-                      let thisModel = models.find(model => model.id === selectedModel)
-                      
-                      return <Button
-                        raised
-                        icon={{name: 'close'}}
-                        key = {thisModel.id}
-                        title={thisModel.name}
-                        onPress={(evt) => this.removeModel(evt, thisModel.id)}
-                      />
-                    })}
-                  </View>
                   <View style={{ 
                     flex:1,
                     alignItems: 'center', 
@@ -204,10 +166,16 @@ export default class NewHomeScreen extends Component {
                     >
                     <TouchableOpacity 
                       activeOpacity = { .5 }
-                      onPress={() => this.props.navigation.navigate('SelectTags', {
-                        image: this.state.image,
-                        tags: this.state.tags
-                      })}
+                      onPress={
+                        () => this.findTags
+                        .then(() => this.props.navigation.navigate('SelectTags', {
+                          image: this.state.image,
+                          possibleTags: this.state.tags,
+                          selectedModels: this.state.selectedModels
+                          }),
+                          (err) => console.log(err)
+                        )
+                      }
                     >
                       <Image
                         style={styles.tagit}
@@ -275,8 +243,9 @@ export default class NewHomeScreen extends Component {
       }
   }
 
-  findTags = selectedModel => {
-    this._getData(selectedModel)
+  findTags = () => {
+    let tagPromises = this.state.selectedModels.map( selectedModel => this._getData(selectedModel))
+    return Promise.all(tagPromises)
   };
 
   removeModelTags = selectedModel => {
@@ -284,13 +253,13 @@ export default class NewHomeScreen extends Component {
     let updatedSelection = this.state.selectedModels.filter(model => {
       return model !== selectedModel
     })
+    this.setState({selectedModels: updatedSelection})
   };
     
   _getData = (selectedModel) => {
     let { image } = this.state
-    app.models.predict(selectedModel, {base64: image.base64})
+    return app.models.predict(selectedModel, {base64: image.base64})
     .then( res => {
-      //add conditional for colors
       console.log('Clarifai response = ', res.rawData)
       let newTags = {};
       newTags[selectedModel] = []
@@ -301,9 +270,7 @@ export default class NewHomeScreen extends Component {
       this.setState({ tags });
       return newTags[selectedModel]
       },
-      function(err) {
-        console.log(err)
-      }
+      (err) => console.log(err)
     )
   }
 
@@ -329,7 +296,6 @@ export default class NewHomeScreen extends Component {
       console.log(err)
     }
   )}
-
 }
 
 
